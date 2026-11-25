@@ -1,0 +1,63 @@
+{% extends "ota/base.html" %}
+{% block title %}New Raw Material Purchase{% endblock %}
+{% block content %}
+
+<div style="max-width:800px;margin:0 auto">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <h1>🛒 Inward Raw Material Purchase</h1>
+    <a href="{% url 'purchase_list' %}" class="btn ghost">Cancel</a>
+  </div>
+
+  <div class="card" style="box-shadow:var(--shadow-md)">
+    <form method="post">
+      {% csrf_token %}
+      {{ formset.management_form }}
+
+      <div class="grid" style="grid-template-columns: 2fr 1fr 1fr;margin-bottom:1rem">
+        <div class="field">
+          <label for="{{ form.supplier.id_for_label }}">Supplier</label>
+          {{ form.supplier }}
+        </div>
+        <div class="field">
+          <label for="{{ form.bill_no.id_for_label }}">Supplier Bill No.</label>
+          {{ form.bill_no }}
+        </div>
+        <div class="field">
+          <label for="{{ form.bill_date.id_for_label }}">Bill Date</label>
+          {{ form.bill_date }}
+        </div>
+      </div>
+
+      <h2 style="font-size:1.05rem;margin:1.25rem 0 0.5rem">Inward Items</h2>
+      <div class="card scroll" style="padding:0;background:#fafafa;border:1px solid var(--line);margin-bottom:1.25rem">
+        <table>
+          <thead>
+            <tr>
+              <th>Raw Material / Packaging</th>
+              <th style="width:180px">Inward Quantity</th>
+              <th style="width:180px">Purchase Rate (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in formset %}
+            <tr>
+              <td>{{ f.item }}</td>
+              <td>{{ f.qty }}</td>
+              <td>{{ f.rate }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="actions" style="justify-content:flex-end">
+        <a href="{% url 'purchase_list' %}" class="btn ghost">Cancel</a>
+        <button type="submit" class="btn primary" style="padding:0.6rem 1.5rem">
+          📥 Post Inward Stock to Ledger
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

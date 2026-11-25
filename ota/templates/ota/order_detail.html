@@ -1,0 +1,167 @@
+{% extends "ota/base.html" %}
+{% block title %}Order {{ order.order_no }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
+  <div>
+    <h1>
+      <span>{{ order.order_no }}</span>
+      <span class="pill {{ order.status }}">{{ order.get_status_display }}</span>
+    </h1>
+    <p class="muted" style="margin:0">
+      {{ order.customer.name }} &middot; {{ order.customer.state_name }} (State code: {{ order.customer.state_code }})
+      &middot; Taken by <strong>{{ order.salesman.username }}</strong> on {{ order.business_date }}
+      {% if order.captured_offline %}&middot; <span class="pill" style="background:#fed7aa;color:#9a3412">Captured Offline</span>{% endif %}
+    </p>
+  </div>
+  <div>
+    <a href="{% url 'order_list' %}" class="btn ghost">← Back to Orders</a>
+  </div>
+</div>
+
+<!-- ORDER LIFECYCLE STEPPER -->
+<div class="stepper">
+  <div class="step-item {% if order.status in 'SUBMITTED,APPROVED,INVOICED,DISPATCHED' %}completed{% endif %}">
+    <span class="step-num">1</span> 1. Submitted
+  </div>
+  <div class="step-divider"></div>
+  <div class="step-item {% if order.status in 'APPROVED,INVOICED,DISPATCHED' %}completed{% elif order.status == 'SUBMITTED' %}active{% endif %}">
+    <span class="step-num">2</span> 2. Factory Approval
+  </div>
+  <div class="step-divider"></div>
+  <div class="step-item {% if order.status in 'INVOICED,DISPATCHED' %}completed{% elif order.status == 'APPROVED' %}active{% endif %}">
+    <span class="step-num">3</span> 3. GST Invoiced
+  </div>
+  <div class="step-divider"></div>
+  <div class="step-item {% if order.status == 'DISPATCHED' %}completed{% elif order.status == 'INVOICED' %}active{% endif %}">
+    <span class="step-num">4</span> 4. Dispatched
+  </div>
+</div>
+
+<!-- STOCK AVAILABILITY CHECK & LINE ITEMS -->
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th class="num">Ordered Qty</th>
+        <th class="num">Rate (₹)</th>
+        <th class="num">Amount (₹)</th>
+        <th class="num">Warehouse Available</th>
+        <th>Stock Coverage Check</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in checks %}
+      <tr style="{% if not row.covered %}background:rgba(254,242,242,0.4);{% endif %}">
+        <td><strong>{{ row.item.name }}</strong> ({{ row.item.code }})</td>
+        <td class="num">{{ row.required }}</td>
+        <td class="num">₹{{ row.line.rate }}</td>
+        <td class="num">₹{{ row.line.amount }}</td>
+        <td class="num">{{ row.available }}</td>
+        <td>
+          {% if row.covered %}
+            <span class="ok">✓ Covered in stock</span>
+          {% else %}
+            <span class="flag">⚠️ Short by {{ row.shortage }} pkts</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      <tr style="background:#f8fafc;font-weight:700">
+        <td>Total Order</td>
+        <td class="num">{{ order.total_qty }} pkts</td>
+        <td></td>
+        <td class="num" style="color:var(--accent);font-size:0.95rem">₹{{ order.total_value }}</td>
+        <td colspan="2"></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ADMIN / ACTION CONTROLS -->
+{% if request.user.is_superuser or 'admin' in user_roles %}
+<div class="card" style="border: 2px solid var(--accent);background:#fcfdff">
+  <div class="card-header" style="margin-bottom:0.75rem">
+    <h2 style="font-size:1.05rem;color:var(--accent);display:flex;align-items:center;gap:0.4rem">
+      ⚡ Factory Admin Actions
+    </h2>
+    <span class="muted" style="font-size:0.78rem">Current state: {{ order.get_status_display }}</span>
+  </div>
+
+  <div class="actions">
+    {% if order.status == 'SUBMITTED' %}
+      <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="approve">
+        <button type="submit" class="btn success">✓ Approve Order in Full</button>
+      </form>
+      
+      <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="approve_partial">
+        <button type="submit" class="btn ghost">⚠️ Approve Only Stock Available (Partial)</button>
+      </form>
+
+      <form method="post" class="inline" style="display:inline-flex;gap:0.35rem">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reject">
+        <input type="text" name="reason" placeholder="Rejection reason..." style="width:200px">
+        <button type="submit" class="btn danger">Reject</button>
+      </form>
+    {% endif %}
+
+    {% if order.status == 'APPROVED' %}
+      <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="invoice">
+        <button type="submit" class="btn primary" style="box-shadow: 0 2px 4px rgba(37,99,235,0.3)">
+          🧾 Raise GST Tax Invoice
+        </button>
+      </form>
+    {% endif %}
+
+    {% if order.status == 'INVOICED' and invoice %}
+      <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="dispatch">
+        <button type="submit" class="btn success" style="box-shadow: 0 2px 4px rgba(5,150,105,0.3)">
+          📦 Record Goods Dispatch (Deducts Stock)
+        </button>
+      </form>
+      <a class="btn ghost" href="{% url 'invoice_pdf' invoice.pk %}" target="_blank">📄 Invoice PDF</a>
+      <a class="btn whatsapp" href="https://api.whatsapp.com/send?text=Sri%20Lakshmi%20Snacks%20Invoice%20{{ invoice.invoice_no }}%20Amount:%20Rs.{{ invoice.total }}" target="_blank">
+        💬 WhatsApp Share
+      </a>
+    {% endif %}
+
+    {% if order.status == 'DISPATCHED' and invoice %}
+      <a class="btn ghost" href="{% url 'invoice_detail' invoice.pk %}">View Posted Invoice {{ invoice.invoice_no }} →</a>
+      <a class="btn ghost" href="{% url 'invoice_pdf' invoice.pk %}" target="_blank">📄 Download PDF</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- LINKED INVOICE PREVIEW -->
+{% if invoice %}
+<div class="card" style="border-left: 6px solid #8b5cf6">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem">
+    <div>
+      <h3 style="margin:0;color:#6b21a8">Tax Invoice: {{ invoice.invoice_no }}</h3>
+      <p class="muted" style="margin:0.25rem 0 0">
+        Taxable: ₹{{ invoice.taxable_value }} &middot;
+        {% if invoice.igst %}IGST (Inter-state): ₹{{ invoice.igst }}{% else %}CGST: ₹{{ invoice.cgst }} + SGST: ₹{{ invoice.sgst }}{% endif %}
+        &middot; Total: <strong style="color:var(--ink)">₹{{ invoice.total }}</strong>
+        &middot; Outstanding Due: <strong style="color:var(--bad)">₹{{ invoice.outstanding }}</strong>
+      </p>
+    </div>
+    <div style="display:flex;gap:0.4rem">
+      <a class="btn ghost" href="{% url 'invoice_detail' invoice.pk %}">Invoice Details →</a>
+      <a class="btn ghost" href="{% url 'invoice_pdf' invoice.pk %}" target="_blank">📄 Open PDF</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

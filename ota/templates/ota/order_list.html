@@ -1,0 +1,64 @@
+{% extends "ota/base.html" %}
+{% block title %}Sales Orders{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>📋 Field Sales Orders</h1>
+    <p class="muted" style="margin:0">
+      Track orders placed by salesmen from field visits. Orders lock finished goods upon approval.
+    </p>
+  </div>
+  <div>
+    <a href="{% url 'order_create' %}" class="btn primary" style="box-shadow: 0 2px 4px rgba(37,99,235,0.25)">
+      ➕ New Field Sales Order
+    </a>
+  </div>
+</div>
+
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Order No.</th>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Salesman</th>
+        <th class="num">Quantity</th>
+        <th class="num">Value (₹)</th>
+        <th>Status</th>
+        <th>Network Mode</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+      <tr>
+        <td><code><strong>{{ order.order_no }}</strong></code></td>
+        <td>{{ order.business_date }}</td>
+        <td><strong>{{ order.customer.name }}</strong> ({{ order.customer.state_code }})</td>
+        <td>{{ order.salesman.username }}</td>
+        <td class="num">{{ order.total_qty }} pkts</td>
+        <td class="num" style="font-weight:700">₹{{ order.total_value }}</td>
+        <td><span class="pill {{ order.status }}">{{ order.get_status_display }}</span></td>
+        <td>
+          {% if order.captured_offline %}
+            <span class="pill" style="background:#fed7aa;color:#9a3412">Offline Sync</span>
+          {% else %}
+            <span class="muted" style="font-size:0.75rem">Online</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'order_detail' order.pk %}" class="btn ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem">
+            View / Act →
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="muted" style="text-align:center;padding:2rem">No sales orders found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

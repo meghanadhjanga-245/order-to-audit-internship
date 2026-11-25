@@ -1,0 +1,160 @@
+{% extends "ota/base.html" %}
+{% block title %}Tax Invoice {{ invoice.invoice_no }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>
+      <span>Tax Invoice: {{ invoice.invoice_no }}</span>
+      <span class="pill {{ invoice.status }}">{{ invoice.get_status_display }}</span>
+    </h1>
+    <p class="muted" style="margin:0">
+      Place of Supply: <strong>{{ invoice.place_of_supply }}</strong> &middot; Invoice Date: {{ invoice.business_date }}
+      &middot; Financial Year: {{ invoice.financial_year }}
+    </p>
+  </div>
+
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <a href="{% url 'invoice_pdf' invoice.pk %}" target="_blank" class="btn primary">
+      📄 Download Official PDF
+    </a>
+    
+    <a class="btn whatsapp" target="_blank"
+       href="https://api.whatsapp.com/send?text=Sri%20Lakshmi%20Snacks%20-%20Tax%20Invoice%20{{ invoice.invoice_no }}%0ACustomer:%20{{ invoice.customer.name }}%0ADate:%20{{ invoice.business_date }}%0ATaxable:%20Rs.{{ invoice.taxable_value }}%0AGST:%20Rs.{{ invoice.cgst|add:invoice.sgst|add:invoice.igst }}%0ATotal%20Amount:%20Rs.{{ invoice.total }}%0AThank%20you%20for%20your%20business!">
+      💬 Share via WhatsApp
+    </a>
+
+    <button type="button" class="btn ghost" onclick="copyInvoiceSummary()">
+      📋 Copy Summary
+    </button>
+  </div>
+</div>
+
+<!-- INVOICE METADATA CARD -->
+<div class="card" style="box-shadow:var(--shadow-md);border-top:4px solid var(--accent)">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:1rem;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--line)">
+    <div>
+      <div class="muted" style="font-size:0.75rem;font-weight:700">ISSUED BY (SELLER)</div>
+      <div style="font-weight:800;font-size:1.05rem;color:var(--ink)">{{ invoice.company.name|default:"Sri Lakshmi Snacks" }}</div>
+      <div class="muted" style="font-size:0.8rem">GSTIN: 33ABCDE1234F1Z5</div>
+      <div class="muted" style="font-size:0.8rem">State: Tamil Nadu (33)</div>
+    </div>
+    <div>
+      <div class="muted" style="font-size:0.75rem;font-weight:700">BILLED TO (BUYER)</div>
+      <div style="font-weight:800;font-size:1.05rem;color:var(--ink)">{{ invoice.customer.name }}</div>
+      <div class="muted" style="font-size:0.8rem">GSTIN: {{ invoice.customer.gstin|default:"Unregistered (B2C)" }}</div>
+      <div class="muted" style="font-size:0.8rem">State: {{ invoice.customer.state_name }} ({{ invoice.customer.state_code }})</div>
+    </div>
+    <div>
+      <div class="muted" style="font-size:0.75rem;font-weight:700">TAX TYPE & SUPPLY</div>
+      <div style="font-weight:700;font-size:0.95rem;color:var(--accent)">
+        {% if invoice.igst %}Inter-State Supply (IGST 5%){% else %}Intra-State Supply (CGST 2.5% + SGST 2.5%){% endif %}
+      </div>
+      <div class="muted" style="font-size:0.8rem">Dispatched: {% if invoice.dispatches.exists %}<span class="ok">Yes</span>{% else %}<span class="flag">Pending Dispatch</span>{% endif %}</div>
+    </div>
+  </div>
+
+  <!-- LINE ITEMS -->
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Product Description</th>
+          <th>HSN Code</th>
+          <th class="num">Quantity</th>
+          <th class="num">Unit Rate</th>
+          <th class="num">Taxable Value</th>
+          <th class="num">CGST</th>
+          <th class="num">SGST</th>
+          <th class="num">IGST</th>
+          <th class="num">Total Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in invoice.lines.all %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td><strong>{{ line.item.name }}</strong></td>
+          <td><code>{{ line.item.hsn|default:"2106" }}</code></td>
+          <td class="num">{{ line.qty }} pkts</td>
+          <td class="num">₹{{ line.rate }}</td>
+          <td class="num">₹{{ line.taxable_value }}</td>
+          <td class="num">₹{{ line.cgst }}</td>
+          <td class="num">₹{{ line.sgst }}</td>
+          <td class="num">₹{{ line.igst }}</td>
+          <td class="num" style="font-weight:700">₹{{ line.taxable_value|add:line.cgst|add:line.sgst|add:line.igst }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TOTALS BREAKDOWN -->
+  <div style="display:flex;justify-content:flex-end;margin-top:1.5rem">
+    <div style="width:340px;background:#f8fafc;padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--line)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem;font-size:0.88rem">
+        <span class="muted">Taxable Value:</span>
+        <strong>₹{{ invoice.taxable_value }}</strong>
+      </div>
+      {% if invoice.igst %}
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem;font-size:0.88rem">
+          <span class="muted">IGST (5%):</span>
+          <strong>₹{{ invoice.igst }}</strong>
+        </div>
+      {% else %}
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem;font-size:0.88rem">
+          <span class="muted">CGST (2.5%):</span>
+          <strong>₹{{ invoice.cgst }}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem;font-size:0.88rem">
+          <span class="muted">SGST (2.5%):</span>
+          <strong>₹{{ invoice.sgst }}</strong>
+        </div>
+      {% endif %}
+      <div style="display:flex;justify-content:space-between;margin-top:0.6rem;padding-top:0.6rem;border-top:2px solid var(--line);font-size:1.15rem;font-weight:800;color:var(--ink)">
+        <span>Invoice Total:</span>
+        <span style="color:var(--accent)">₹{{ invoice.total }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:0.4rem;font-size:0.9rem">
+        <span class="muted">Outstanding Balance:</span>
+        <strong style="color:{% if invoice.outstanding > 0 %}var(--bad){% else %}var(--ok){% endif %}">
+          ₹{{ invoice.outstanding }}
+        </strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="actions" style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--line)">
+    {% if not invoice.dispatches.exists and invoice.status == 'POSTED' %}
+      <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="dispatch">
+        <button type="submit" class="btn success">📦 Record Dispatch (Deduct Stock)</button>
+      </form>
+    {% endif %}
+
+    {% if invoice.status == 'POSTED' %}
+      <form method="post" class="inline" onsubmit="return confirm('Cancel this invoice? A credit note will be issued.');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="cancel">
+        <input type="text" name="reason" placeholder="Credit note cancellation reason..." style="width:250px">
+        <button type="submit" class="btn danger">Cancel via Credit Note</button>
+      </form>
+    {% endif %}
+
+    <a href="{% url 'payment_create' %}" class="btn ghost">💵 Record Payment Against Invoice</a>
+  </div>
+</div>
+
+<script>
+  function copyInvoiceSummary() {
+    const text = `Sri Lakshmi Snacks Tax Invoice {{ invoice.invoice_no }}\nCustomer: {{ invoice.customer.name }}\nDate: {{ invoice.business_date }}\nTaxable Value: ₹{{ invoice.taxable_value }}\nTotal Amount: ₹{{ invoice.total }}\nOutstanding Due: ₹{{ invoice.outstanding }}`;
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Invoice summary copied to clipboard!');
+    });
+  }
+</script>
+
+{% endblock %}

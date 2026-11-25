@@ -1,0 +1,67 @@
+{% extends "ota/base.html" %}
+{% block title %}GST Tax Invoices{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>🧾 GST Tax Invoices</h1>
+    <p class="muted" style="margin:0">
+      GST-compliant tax invoices with financial year numbering (e.g. TN/26-27/0001), HSN codes, and place-of-supply tax splits.
+    </p>
+  </div>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <a href="{% url 'payment_create' %}" class="btn ghost">💵 Record Payment Receipt</a>
+    <a href="{% url 'report_view' 'sales' %}?format=xlsx" class="btn ghost">📊 Sales Register (Excel)</a>
+  </div>
+</div>
+
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Invoice No.</th>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Place of Supply</th>
+        <th class="num">Taxable (₹)</th>
+        <th class="num">GST Tax (₹)</th>
+        <th class="num">Total (₹)</th>
+        <th class="num">Outstanding (₹)</th>
+        <th>Status</th>
+        <th>PDF</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td><code><strong>{{ inv.invoice_no }}</strong></code></td>
+        <td>{{ inv.business_date }}</td>
+        <td><strong>{{ inv.customer.name }}</strong></td>
+        <td>{{ inv.place_of_supply }}</td>
+        <td class="num">₹{{ inv.taxable_value }}</td>
+        <td class="num">₹{{ inv.cgst|add:inv.sgst|add:inv.igst }}</td>
+        <td class="num" style="font-weight:700">₹{{ inv.total }}</td>
+        <td class="num" style="font-weight:700;color:{% if inv.outstanding > 0 %}var(--bad){% else %}var(--ok){% endif %};">
+          ₹{{ inv.outstanding }}
+        </td>
+        <td><span class="pill {{ inv.status }}">{{ inv.get_status_display }}</span></td>
+        <td>
+          <a href="{% url 'invoice_pdf' inv.pk %}" target="_blank" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">
+            📄 PDF
+          </a>
+        </td>
+        <td>
+          <a href="{% url 'invoice_detail' inv.pk %}" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">
+            View →
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="11" class="muted" style="text-align:center;padding:2rem">No invoices generated yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

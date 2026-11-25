@@ -1,0 +1,259 @@
+{% extends "ota/base.html" %}
+{% block title %}Benchmark Studio & Verification{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>⚡ Interactive Benchmark Studio</h1>
+    <p class="muted" style="margin:0">
+      Automated verification of Section 5 of the NIT Tiruchirappalli Winter 2026 problem statement.
+    </p>
+  </div>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <form method="post" style="display:inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="run_replay">
+      <button type="submit" class="btn success" style="box-shadow: 0 2px 6px rgba(5,150,105,0.3)">
+        ▶️ Run 9-Step Benchmark Scenario
+      </button>
+    </form>
+    <form method="post" style="display:inline" onsubmit="return confirm('Reset database back to clean benchmark seed data?');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reset_seed">
+      <button type="submit" class="btn ghost">
+        🔄 Reset to Clean Seed
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- SCORECARD -->
+<div class="card" style="border-left: 6px solid {% if all_passed %}var(--ok){% else %}var(--warn){% endif %}">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <span style="font-size:2rem">{% if all_passed %}🏆{% else %}⏳{% endif %}</span>
+        <div>
+          <h2 style="margin:0;font-size:1.35rem">
+            Benchmark Status: 
+            <span style="color:{% if all_passed %}var(--ok){% else %}var(--warn){% endif %}">
+              {{ passed_count }} of {{ total_checks }} Checks Verified
+            </span>
+          </h2>
+          <p class="muted" style="margin:0.2rem 0 0">
+            {% if all_passed %}
+              All 20 mandatory checks from Section 5 match exactly with zero discrepancy.
+            {% else %}
+              Click 'Run 9-Step Benchmark Scenario' above to execute the 9 steps and assert every figure live.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="pill {% if all_passed %}COMPLETED{% else %}ISSUED{% endif %}" style="font-size:0.9rem;padding:0.4rem 0.9rem">
+        {% if all_passed %}✓ 100% PASS (20/20){% else %}READY TO RUN{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKS TABLE -->
+<h2>Section 5 Benchmark Verification Table</h2>
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Assertion Key</th>
+        <th>Expected Figure (Brief §5)</th>
+        <th>Actual Result</th>
+        <th>Audit Status</th>
+        <th>Brief Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for key, expected, actual, ok in checks %}
+      <tr style="{% if ok %}background:rgba(236,253,245,0.4);{% else %}background:rgba(254,242,242,0.4);{% endif %}">
+        <td>{{ forloop.counter }}</td>
+        <td><code><strong>{{ key }}</strong></code></td>
+        <td><strong>{{ expected }}</strong></td>
+        <td><strong style="color:{% if ok %}var(--ok){% else %}var(--bad){% endif %};">{{ actual|default:"-" }}</strong></td>
+        <td>
+          {% if ok %}
+            <span class="ok">✓ PASS</span>
+          {% else %}
+            <span class="flag">✗ FAIL</span>
+          {% endif %}
+        </td>
+        <td class="muted" style="font-size:0.8rem">
+          {% if key == 'flour_average_rate' %}100kg @ ₹42 + 60kg @ ₹45 weighted average
+          {% elif key == 'flour_closing' %}100 + 60 − 40 kg issue
+          {% elif key == 'pouch_closing' %}500 − 188 good − 6 damaged
+          {% elif key == 'fg_after_dispatch' %}50 opening + 188 run − 150 Retailer A
+          {% elif key == 'yield_variance' %}188 actual vs 200 expected (-6%, flagged)
+          {% elif key == 'oil_variance' %}10.5L vs 10.0L (+5%, flagged adverse)
+          {% elif key == 'pouch_variance' %}194 used vs 200 plan (-3%, strict tolerance)
+          {% elif key == 'carton_variance' %}9 used vs 10 plan (-10%, favourable)
+          {% elif key == 'invoice_total' %}₹7,500 + ₹187.50 CGST + ₹187.50 SGST
+          {% elif key == 'outstanding_a' %}₹7,875 billed − ₹4,000 payment received
+          {% elif key == 'shortage_b' %}120 ordered vs 88 stock available (shortage 32)
+          {% elif key == 'cost_per_packet' %}₹5,855 total run cost ÷ 188 good packets
+          {% else %}Section 5 exact benchmark rule
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted" style="text-align:center;padding:2rem">Click 'Run 9-Step Benchmark Scenario' above to execute.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- STEP 8 COST SHEET -->
+{% if cost_sheet %}
+<h2>Run Cost Sheet (Step 8 Verification)</h2>
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Cost Component</th>
+        <th class="num">Quantity</th>
+        <th class="num">Rate (₹)</th>
+        <th class="num">Amount (₹)</th>
+        <th>Costing Method / Basis</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Flour (maida)</td>
+        <td class="num">40.000 kg</td>
+        <td class="num">43.1250</td>
+        <td class="num">1,725.00</td>
+        <td class="muted">Weighted moving average (AS 2 / Ind AS 2)</td>
+      </tr>
+      <tr>
+        <td>Cooking oil</td>
+        <td class="num">10.500 L</td>
+        <td class="num">140.0000</td>
+        <td class="num">1,470.00</td>
+        <td class="muted">Issued to production floor (+0.5L over standard)</td>
+      </tr>
+      <tr>
+        <td>Salt & spice mix</td>
+        <td class="num">1.200 kg</td>
+        <td class="num">200.0000</td>
+        <td class="num">240.00</td>
+        <td class="muted">Recipe standard issue</td>
+      </tr>
+      <tr>
+        <td>200 g pouches</td>
+        <td class="num">194 pcs</td>
+        <td class="num">2.5000</td>
+        <td class="num">485.00</td>
+        <td class="muted">188 good packets + 6 damaged pouches consumed</td>
+      </tr>
+      <tr>
+        <td>Cartons (holds 20 packets)</td>
+        <td class="num">9 pcs</td>
+        <td class="num">15.0000</td>
+        <td class="num">135.00</td>
+        <td class="muted">9 cartons used for 188 packets (favourable variance)</td>
+      </tr>
+      <tr style="background:#f1f5f9;font-weight:700">
+        <td>Total Materials & Packaging</td>
+        <td colspan="2"></td>
+        <td class="num" style="color:var(--accent)">₹4,055.00</td>
+        <td>Raw materials and packaging issue sum</td>
+      </tr>
+      <tr>
+        <td>Labour overhead</td>
+        <td>Floor staff</td>
+        <td class="num">Allocated</td>
+        <td class="num">1,200.00</td>
+        <td class="muted">Direct production staff charge</td>
+      </tr>
+      <tr>
+        <td>Gas & power overhead</td>
+        <td>Furnace & packing</td>
+        <td class="num">Allocated</td>
+        <td class="num">600.00</td>
+        <td class="muted">Energy allocation per run</td>
+      </tr>
+      <tr style="background:#e0f2fe;font-weight:800;font-size:0.95rem">
+        <td>Total Run Cost</td>
+        <td colspan="2"></td>
+        <td class="num" style="color:#0369a1">₹5,855.00</td>
+        <td>Total production cost</td>
+      </tr>
+      <tr style="background:#ecfdf5;font-weight:800;font-size:1.05rem">
+        <td>Cost per Good Packet</td>
+        <td class="num">188 packets</td>
+        <td class="num">-</td>
+        <td class="num" style="color:var(--ok)">₹{{ cost_sheet.cost_per_packet }}</td>
+        <td>₹5,855.00 ÷ 188 sellable packets (yield loss absorbed)</td>
+      </tr>
+      <tr>
+        <td>Selling Price (before GST)</td>
+        <td colspan="2"></td>
+        <td class="num">₹50.00</td>
+        <td>Standard wholesale price</td>
+      </tr>
+      <tr style="background:#fef3c7;font-weight:700">
+        <td>Profit Margin per Packet</td>
+        <td colspan="2"></td>
+        <td class="num" style="color:#92400e">₹{{ cost_sheet.margin_per_packet }} (37.7%)</td>
+        <td>Wholesale selling margin</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- 9-STEP SCENARIO BREAKDOWN -->
+<h2>Scenario Walkthrough (9 Steps)</h2>
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+  <div class="card">
+    <div style="font-weight:700;color:var(--accent);margin-bottom:0.25rem">Step 1 · Purchasing</div>
+    <h3 style="margin-top:0">Purchase 60 kg Flour @ ₹45</h3>
+    <p class="muted">Receipt of 60 kg at ₹45 from Ganesh Traders brings flour stock from 100 kg (@ ₹42) to 160 kg with a weighted-average cost of ₹43.1250.</p>
+    <a href="{% url 'purchase_list' %}" class="btn ghost" style="font-size:0.75rem">View Purchases →</a>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700;color:var(--accent);margin-bottom:0.25rem">Step 2 · Issue to Production</div>
+    <h3 style="margin-top:0">Start Run & Issue Raw Stock</h3>
+    <p class="muted">Issue 40 kg flour, 10.5 L oil (0.5 L over standard), and 1.2 kg spice mix. Stock ledger records issues at weighted average cost.</p>
+    <a href="{% url 'production_list' %}" class="btn ghost" style="font-size:0.75rem">View Production Runs →</a>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700;color:var(--accent);margin-bottom:0.25rem">Step 3 · Run Output & Variance</div>
+    <h3 style="margin-top:0">Actual Output & Packaging</h3>
+    <p class="muted">Record 188 good packets, 6 damaged pouches, and 9 cartons used. Finished goods stock jumps from 50 to 238 packets. Variances flagged automatically.</p>
+    <a href="{% url 'stock' %}" class="btn ghost" style="font-size:0.75rem">Check Finished Goods Stock →</a>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700;color:var(--accent);margin-bottom:0.25rem">Step 4 & 5 · Sales & GST Invoice</div>
+    <h3 style="margin-top:0">Retailer A Order & Dispatch</h3>
+    <p class="muted">Salesman A orders 150 packets. Admin approves, raises GST tax invoice for ₹7,875 (CGST+SGST 5%), and records dispatch (FG drops to 88 packets).</p>
+    <a href="{% url 'order_list' %}" class="btn ghost" style="font-size:0.75rem">View Order List →</a>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700;color:var(--accent);margin-bottom:0.25rem">Step 6 · Shortage & IGST</div>
+    <h3 style="margin-top:0">Distributor B Inter-State Order</h3>
+    <p class="muted">Salesman B orders 120 packets for Distributor B (Karnataka). Stock check flags shortage of 32 packets. IGST applies as interstate supply.</p>
+    <a href="{% url 'order_list' %}" class="btn ghost" style="font-size:0.75rem">Check Stock Coverage →</a>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700;color:var(--accent);margin-bottom:0.25rem">Step 7 & 8 · Collections & Costing</div>
+    <h3 style="margin-top:0">Payment & Cost Sheet</h3>
+    <p class="muted">Record ₹4,000 UPI collection from Retailer A (outstanding ₹3,875). Add Labour (₹1,200) and Power (₹600) to complete the ₹31.14/packet cost sheet.</p>
+    <a href="{% url 'report_view' 'outstanding' %}" class="btn ghost" style="font-size:0.75rem">View Outstanding Ageing →</a>
+  </div>
+</div>
+
+{% endblock %}

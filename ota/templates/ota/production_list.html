@@ -1,0 +1,63 @@
+{% extends "ota/base.html" %}
+{% block title %}Production Runs{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>🏭 Factory Production Runs</h1>
+    <p class="muted" style="margin:0">
+      Recipe-based production runs. Issue raw materials, record good/damaged output, track variances, and compute unit cost.
+    </p>
+  </div>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <a href="{% url 'production_plan' %}" class="btn ghost">📐 BOM Plan Simulator</a>
+    <a href="{% url 'production_create' %}" class="btn primary" style="box-shadow: 0 2px 4px rgba(37,99,235,0.25)">
+      ➕ Start New Production Run
+    </a>
+  </div>
+</div>
+
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Run No.</th>
+        <th>Date</th>
+        <th>Finished Good</th>
+        <th class="num">Batches</th>
+        <th class="num">Plan Qty</th>
+        <th class="num">Good Output</th>
+        <th class="num">Cost / Packet</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td><code><strong>{{ run.run_no }}</strong></code></td>
+        <td>{{ run.business_date }}</td>
+        <td><strong>{{ run.bom.product.name }}</strong></td>
+        <td class="num">{{ run.batches }}</td>
+        <td class="num">{{ run.expected_output }} pkts</td>
+        <td class="num" style="font-weight:700">
+          {% if run.good_output %}{{ run.good_output }} pkts{% else %}-{% endif %}
+        </td>
+        <td class="num" style="font-weight:700;color:var(--ok)">
+          {% if run.cost_per_packet %}₹{{ run.cost_per_packet }}{% else %}-{% endif %}
+        </td>
+        <td><span class="pill {{ run.status }}">{{ run.get_status_display }}</span></td>
+        <td>
+          <a href="{% url 'production_detail' run.pk %}" class="btn ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem">
+            Open Run →
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="muted" style="text-align:center;padding:2rem">No production runs recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

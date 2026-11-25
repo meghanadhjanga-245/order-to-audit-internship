@@ -1,0 +1,81 @@
+{% extends "ota/base.html" %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>📊 {{ report.title }}</h1>
+    <p class="muted" style="margin:0">
+      Filtered audit export &middot; Derived directly from the append-only transaction journal.
+    </p>
+  </div>
+  <div>
+    <a href="{% url 'report_list' %}" class="btn ghost">← All Reports</a>
+  </div>
+</div>
+
+<form method="get" class="toolbar">
+  <div>
+    <label for="id_from">Date From</label>
+    <input type="date" id="id_from" name="from" value="{{ from }}">
+  </div>
+  <div>
+    <label for="id_to">Date To</label>
+    <input type="date" id="id_to" name="to" value="{{ to }}">
+  </div>
+  <button type="submit" class="btn primary">Apply Filter</button>
+  
+  <div style="margin-left:auto;display:flex;gap:0.4rem;flex-wrap:wrap">
+    <a class="btn ghost" href="?format=xlsx{% if from %}&from={{ from }}{% endif %}{% if to %}&to={{ to }}{% endif %}">📊 Export Excel</a>
+    <a class="btn ghost" href="?format=csv{% if from %}&from={{ from }}{% endif %}{% if to %}&to={{ to }}{% endif %}">📑 Export CSV</a>
+    <a class="btn ghost" href="?format=pdf{% if from %}&from={{ from }}{% endif %}{% if to %}&to={{ to }}{% endif %}">📄 Download PDF</a>
+    {% if key == 'sales' %}
+      <a class="btn ghost" href="?format=tally_xml{% if from %}&from={{ from }}{% endif %}{% if to %}&to={{ to }}{% endif %}" style="background:#fef3c7;color:#92400e;border-color:#fde68a" title="Tally-compatible XML voucher export">💾 Export Tally XML</a>
+    {% endif %}
+  </div>
+</form>
+
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        {% for column in report.columns %}
+          <th {% if 'Rs' in column or 'Qty' in column or 'Total' in column or 'Closing' in column or 'Issues' in column or 'Receipts' in column %}class="num"{% endif %}>
+            {{ column }}
+          </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in report.rows %}
+      <tr>
+        {% for cell in row %}
+          <td {% if forloop.counter > 3 and not forloop.last %}class="num"{% endif %}>
+            {{ cell }}
+          </td>
+        {% endfor %}
+      </tr>
+      {% empty %}
+      <tr><td colspan="{{ report.columns|length }}" class="muted" style="text-align:center;padding:2rem">Nothing recorded in this period.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if report.totals %}
+<div class="card" style="background:#f8fafc;border-top:3px solid var(--accent)">
+  <div style="font-size:0.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem">
+    Report Summary & Totals:
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:1.5rem">
+    {% for label, value in report.totals.items %}
+      <div>
+        <span class="muted" style="font-size:0.84rem">{{ label }}:</span>
+        <strong style="font-size:1.1rem;color:var(--ink);margin-left:0.35rem">{{ value }}</strong>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

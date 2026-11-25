@@ -1,0 +1,146 @@
+{% extends "ota/base.html" %}
+{% block title %}New Sales Order{% endblock %}
+{% block content %}
+
+<div style="max-width:800px;margin:0 auto">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <h1>📱 New Field Sales Order</h1>
+    <a href="{% url 'order_list' %}" class="btn ghost">Cancel</a>
+  </div>
+
+  <div class="card" style="box-shadow:var(--shadow-md)">
+    <form method="post" id="orderForm">
+      {% csrf_token %}
+      {{ formset.management_form }}
+
+      <div class="grid" style="grid-template-columns: 2fr 1fr;margin-bottom:1rem">
+        <div class="field">
+          <label for="{{ form.customer.id_for_label }}">Customer (Retailer / Distributor)</label>
+          {{ form.customer }}
+        </div>
+        <div class="field">
+          <label for="{{ form.business_date.id_for_label }}">Order Date</label>
+          {{ form.business_date }}
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:1.25rem 0 0.5rem">
+        <h2 style="margin:0;font-size:1.1rem">Order Products</h2>
+        <span class="muted" style="font-size:0.8rem">Master rate applied automatically</span>
+      </div>
+
+      <div class="card scroll" style="padding:0;border:1px solid var(--line);background:#fafafa">
+        <table id="linesTable">
+          <thead>
+            <tr>
+              <th>Finished Product</th>
+              <th style="width:220px">Quantity</th>
+              <th class="num" style="width:130px">Line Est.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in formset %}
+            <tr class="line-row">
+              <td>
+                {{ f.item }}
+                {% if f.item.errors %}<div class="flag">{{ f.item.errors }}</div>{% endif %}
+              </td>
+              <td>
+                <div style="display:flex;align-items:center;gap:0.35rem">
+                  {{ f.qty }}
+                  <button type="button" class="btn ghost" style="padding:0.25rem 0.45rem;font-size:0.75rem" onclick="addQty(this, 10)">+10</button>
+                  <button type="button" class="btn ghost" style="padding:0.25rem 0.45rem;font-size:0.75rem" onclick="addQty(this, 50)">+50</button>
+                  <button type="button" class="btn ghost" style="padding:0.25rem 0.45rem;font-size:0.75rem" onclick="addQty(this, 100)">+100</button>
+                </div>
+                {% if f.qty.errors %}<div class="flag">{{ f.qty.errors }}</div>{% endif %}
+              </td>
+              <td class="num line-total" style="font-weight:700">₹0.00</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- LIVE ORDER TOTAL PREVIEW -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--accent-soft);padding:0.85rem 1.1rem;border-radius:var(--radius-sm);border:1px solid #bfdbfe;margin-bottom:1.25rem">
+        <div>
+          <span style="font-weight:700;color:var(--accent);font-size:0.9rem">Order Total Summary:</span>
+          <span id="totalPackets" class="muted" style="margin-left:0.5rem">0 packets</span>
+        </div>
+        <div style="font-size:1.25rem;font-weight:800;color:#1e3a8a" id="grandTotal">₹0.00</div>
+      </div>
+
+      <!-- OFFLINE MODE CAPTURE -->
+      <div style="background:#fffbeb;padding:0.75rem 1rem;border-radius:var(--radius-sm);border:1px solid #fef3c7;margin-bottom:1.25rem;display:flex;align-items:center;gap:0.65rem">
+        {{ form.captured_offline }}
+        <label for="{{ form.captured_offline.id_for_label }}" style="margin:0;font-size:0.84rem;color:#92400e;font-weight:600">
+          📡 Captured Offline (Checked if salesman took order on weak field network; synced to factory)
+        </label>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:0.75rem">
+        <a href="{% url 'order_list' %}" class="btn ghost">Cancel</a>
+        <button type="submit" class="btn primary" style="padding:0.6rem 1.5rem;font-size:0.95rem">
+          🚀 Submit Order to Factory
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Product pricing metadata passed from view
+  const products = {
+    {% for p in products_meta %}
+      "{{ p.id }}": { name: "{{ p.name }}", price: parseFloat("{{ p.price }}"), available: parseFloat("{{ p.available }}") },
+    {% endfor %}
+  };
+
+  function addQty(btn, amount) {
+    const row = btn.closest('.line-row');
+    const input = row.querySelector('input[type="number"]');
+    if (input) {
+      const cur = parseFloat(input.value) || 0;
+      input.value = cur + amount;
+      updateTotals();
+    }
+  }
+
+  function updateTotals() {
+    let totalQty = 0;
+    let totalAmt = 0;
+
+    document.querySelectorAll('.line-row').forEach(row => {
+      const select = row.querySelector('select');
+      const qtyInput = row.querySelector('input[type="number"]');
+      const totalCell = row.querySelector('.line-total');
+
+      if (select && qtyInput && totalCell) {
+        const itemId = select.value;
+        const qty = parseFloat(qtyInput.value) || 0;
+        const meta = products[itemId];
+        if (meta && qty > 0) {
+          const lineVal = qty * meta.price;
+          totalCell.textContent = '₹' + lineVal.toFixed(2);
+          totalQty += qty;
+          totalAmt += lineVal;
+        } else {
+          totalCell.textContent = '₹0.00';
+        }
+      }
+    });
+
+    document.getElementById('totalPackets').textContent = totalQty + ' packets';
+    document.getElementById('grandTotal').textContent = '₹' + totalAmt.toFixed(2);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#linesTable select, #linesTable input').forEach(el => {
+      el.addEventListener('change', updateTotals);
+      el.addEventListener('input', updateTotals);
+    });
+    updateTotals();
+  });
+</script>
+
+{% endblock %}

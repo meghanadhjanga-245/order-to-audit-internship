@@ -1,0 +1,108 @@
+{% extends "ota/base.html" %}
+{% block title %}Warehouse Stock & Movement Ledger{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>📦 Warehouse Stock & Audit Ledger</h1>
+    <p class="muted" style="margin:0">
+      Single append-only stock movement ledger. Balances are always calculated from the transaction journal.
+    </p>
+  </div>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <a class="btn ghost" href="{% url 'report_view' 'stock' %}?format=xlsx">📊 Stock Summary (Excel)</a>
+    <a class="btn ghost" href="{% url 'report_view' 'ledger' %}?format=xlsx">📑 Stock Ledger (Excel)</a>
+    <a class="btn ghost" href="{% url 'report_view' 'stock' %}?format=pdf">📄 Stock Summary (PDF)</a>
+  </div>
+</div>
+
+<!-- CURRENT CLOSING STOCK SUMMARY -->
+<h2>Current Stock Summary</h2>
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Item Description</th>
+        <th>Category</th>
+        <th class="num">Opening</th>
+        <th class="num">Receipts (+)</th>
+        <th class="num">Issues (-)</th>
+        <th class="num">Closing Balance</th>
+        <th class="num">Valuation (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in summary.rows %}
+      <tr>
+        <td><code>{{ row.0 }}</code></td>
+        <td><strong>{{ row.1 }}</strong></td>
+        <td><span class="pill {{ row.2 }}">{{ row.2 }}</span></td>
+        <td class="num">{{ row.3 }}</td>
+        <td class="num" style="color:var(--ok)">+{{ row.4 }}</td>
+        <td class="num" style="color:var(--bad)">-{{ row.5 }}</td>
+        <td class="num" style="font-weight:700">{{ row.6 }}</td>
+        <td class="num" style="font-weight:700">₹{{ row.7 }}</td>
+      </tr>
+      {% endfor %}
+      <tr style="background:#f8fafc;font-weight:800;font-size:0.95rem">
+        <td colspan="7">Total Warehouse Inventory Value (Moving Weighted Average)</td>
+        <td class="num" style="color:var(--accent)">
+          ₹{% for k,v in summary.totals.items %}{{ v }}{% endfor %}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- AUDIT STOCK MOVEMENTS LEDGER -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin:2rem 0 0.75rem">
+  <h2 style="margin:0">Append-Only Stock Movements Journal</h2>
+  <span class="muted" style="font-size:0.8rem">Immutable audit trail &middot; No row can be deleted</span>
+</div>
+
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Date</th>
+        <th>Item Code</th>
+        <th>Kind</th>
+        <th class="num">Quantity</th>
+        <th class="num">Unit Cost (₹)</th>
+        <th class="num">Value (₹)</th>
+        <th>Source Document</th>
+        <th>Recorded By</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for mv in movements %}
+      <tr>
+        <td><code class="muted">#{{ mv.pk }}</code></td>
+        <td>{{ mv.business_date }}</td>
+        <td><strong>{{ mv.item.code }}</strong></td>
+        <td>
+          <span class="pill" style="{% if mv.qty > 0 %}background:#ecfdf5;color:#065f46{% elif mv.qty < 0 %}background:#fef2f2;color:#991b1b{% else %}background:#eff6ff;color:#1e40af{% endif %}">
+            {{ mv.kind }}
+          </span>
+        </td>
+        <td class="num" style="font-weight:700;color:{% if mv.qty > 0 %}var(--ok){% elif mv.qty < 0 %}var(--bad){% else %}var(--accent){% endif %};">
+          {% if mv.qty > 0 %}+{% endif %}{{ mv.qty }} {{ mv.item.base_unit }}
+        </td>
+        <td class="num">₹{{ mv.unit_cost }}</td>
+        <td class="num" style="font-weight:600">₹{{ mv.value }}</td>
+        <td>
+          <strong>{{ mv.source_type }}</strong>
+          {% if mv.source_ref %}<span class="muted">({{ mv.source_ref }})</span>{% endif %}
+        </td>
+        <td class="muted">{{ mv.created_by.username|default:"System" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="muted" style="text-align:center;padding:2rem">No movements recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

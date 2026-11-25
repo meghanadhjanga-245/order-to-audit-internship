@@ -1,0 +1,255 @@
+{% extends "ota/base.html" %}
+{% block title %}Production Run {{ run.run_no }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
+  <div>
+    <h1>
+      <span>{{ run.run_no }}</span>
+      <span class="pill {{ run.status }}">{{ run.get_status_display }}</span>
+    </h1>
+    <p class="muted" style="margin:0">
+      {{ run.bom.product.name }} &middot; Run date: {{ run.business_date }} &middot;
+      <strong>{{ run.batches }} batch(es)</strong> &middot; Standard expected yield: <strong>{{ run.expected_output }} packets</strong>
+    </p>
+  </div>
+  <div>
+    <a href="{% url 'production_list' %}" class="btn ghost">← Back to Production Runs</a>
+  </div>
+</div>
+
+<!-- RUN LIFECYCLE STEPPER -->
+<div class="stepper">
+  <div class="step-item {% if run.status in 'DRAFT,ISSUED,COMPLETED,COSTED' %}completed{% endif %}">
+    <span class="step-num">1</span> 1. Draft BOM Snapshot
+  </div>
+  <div class="step-divider"></div>
+  <div class="step-item {% if run.status in 'ISSUED,COMPLETED,COSTED' %}completed{% elif run.status == 'DRAFT' %}active{% endif %}">
+    <span class="step-num">2</span> 2. Raw Material Issue
+  </div>
+  <div class="step-divider"></div>
+  <div class="step-item {% if run.status in 'COMPLETED,COSTED' %}completed{% elif run.status == 'ISSUED' %}active{% endif %}">
+    <span class="step-num">3</span> 3. Packaging & Good Output
+  </div>
+  <div class="step-divider"></div>
+  <div class="step-item {% if run.status == 'COSTED' %}completed{% elif run.status == 'COMPLETED' %}active{% endif %}">
+    <span class="step-num">4</span> 4. Overheads & Cost Sheet
+  </div>
+</div>
+
+<!-- PLANNED VS ACTUAL VARIANCE TABLE -->
+<h2>Planned vs Actual Consumption & Yield</h2>
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Category</th>
+        <th class="num">Planned Standard</th>
+        <th class="num">Actual Issued/Used</th>
+        <th class="num">Variance %</th>
+        <th>Tolerance Audit Flag</th>
+        <th class="num">Cost Incurred</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in variance.lines %}
+      <tr>
+        <td><strong>{{ row.item.name }}</strong> ({{ row.item.code }})</td>
+        <td><span class="pill {{ row.item.kind }}">{{ row.item.get_kind_display }}</span></td>
+        <td class="num">{{ row.planned }} {{ row.item.base_unit }}</td>
+        <td class="num" style="font-weight:700">{{ row.actual }} {{ row.item.base_unit }}</td>
+        <td class="num" style="font-weight:700">{{ row.variance }}%</td>
+        <td>
+          {% if row.flagged %}
+            {% if row.direction == 'adverse' %}
+              <span class="flag">⚠️ Adverse ({{ row.variance }}%)</span>
+            {% else %}
+              <span class="ok">✓ Favourable ({{ row.variance }}%)</span>
+            {% endif %}
+          {% else %}
+            <span class="pill" style="background:#f1f5f9;color:#64748b">Within {{ row.tolerance }}%</span>
+          {% endif %}
+        </td>
+        <td class="num">₹{{ row.cost }}</td>
+      </tr>
+      {% endfor %}
+      <!-- YIELD ROW -->
+      <tr style="background:#f8fafc;font-weight:700">
+        <td colspan="2">Finished Goods Yield</td>
+        <td class="num">{{ run.expected_output }} pkts</td>
+        <td class="num" style="color:var(--accent)">{{ run.good_output|default:0 }} pkts</td>
+        <td class="num">{{ variance.yield_variance }}%</td>
+        <td>
+          {% if variance.yield_flagged %}
+            <span class="flag">⚠️ Yield Flagged ({{ variance.yield_variance }}%)</span>
+          {% else %}
+            <span class="ok">✓ Within Plan</span>
+          {% endif %}
+        </td>
+        <td class="num">₹{{ run.material_cost }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- STAGE 1: ISSUE RAW MATERIALS -->
+{% if run.status == 'DRAFT' %}
+<div class="card" style="border: 2px solid #3b82f6;background:#fcfdff">
+  <div class="card-header">
+    <h3 style="color:#1d4ed8;margin:0">1. Confirm & Post Raw Material Issues to Ledger</h3>
+    <span class="muted" style="font-size:0.8rem">Deducts stock at moving weighted average</span>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="issue">
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Raw Material</th>
+            <th class="num">BOM Standard</th>
+            <th class="num">Warehouse On-Hand</th>
+            <th style="width:160px">Actual Issue Now</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in run.lines.all %}
+            {% if line.item.kind != 'PACK' %}
+            <tr>
+              <td><strong>{{ line.item.name }}</strong></td>
+              <td class="num">{{ line.planned_qty }} {{ line.item.base_unit }}</td>
+              <td class="num">
+                {% for k,v in on_hand.items %}{% if k == line.item_id %}{{ v }} {{ line.item.base_unit }}{% endif %}{% endfor %}
+              </td>
+              <td>
+                <input type="number" step="0.001" name="qty_{{ line.pk }}" value="{{ line.planned_qty }}" required style="width:100%">
+              </td>
+            </tr>
+            {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="actions" style="margin-top:1rem">
+      <button type="submit" class="btn primary">🚀 Issue Raw Materials & Post to Ledger</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- STAGE 2: COMPLETE RUN & RECORD PACKAGING -->
+{% if run.status == 'ISSUED' %}
+<div class="card" style="border: 2px solid #059669;background:#fcfdfd">
+  <div class="card-header">
+    <h3 style="color:#047857;margin:0">2. Record Actual Good Packets & Packaging Used</h3>
+    <span class="muted" style="font-size:0.8rem">Increases FG stock, issues packaging</span>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="complete">
+    
+    <div class="grid" style="grid-template-columns: 1fr 1fr;margin-bottom:1rem">
+      <div class="field">
+        <label>Good Sellable Packets Produced</label>
+        {{ complete_form.good_output }}
+      </div>
+      <div class="field">
+        <label>Damaged / Scrapped Packets</label>
+        {{ complete_form.damaged_packets }}
+      </div>
+    </div>
+
+    <p class="muted" style="font-size:0.82rem;margin-bottom:0.75rem">
+      Enter exact packaging consumed. This single input posts to the ledger and calculates packaging variance.
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Packaging Item</th>
+            <th class="num">Standard Planned</th>
+            <th style="width:180px">Actually Consumed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in run.lines.all %}
+            {% if line.item.kind == 'PACK' %}
+            <tr>
+              <td><strong>{{ line.item.name }}</strong></td>
+              <td class="num">{{ line.planned_qty }} {{ line.item.base_unit }}</td>
+              <td>
+                <input type="number" step="0.001" min="0" name="pack_{{ line.pk }}" value="{{ line.planned_qty }}" required style="width:100%">
+              </td>
+            </tr>
+            {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="actions" style="margin-top:1rem">
+      <button type="submit" class="btn success">✓ Complete Run & Receive Finished Goods</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- STAGE 3: OVERHEADS & COST PER PACKET -->
+<div class="card">
+  <div class="card-header">
+    <h2>3. Production Cost Sheet & Unit Costing</h2>
+    {% if run.cost_per_packet %}
+      <span class="pill COSTED" style="font-size:0.85rem;padding:0.3rem 0.75rem">
+        ✓ Costed: ₹{{ run.cost_per_packet }} / packet
+      </span>
+    {% endif %}
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:0.75rem;margin-bottom:1rem">
+    <div style="background:#f8fafc;padding:0.75rem;border-radius:var(--radius-sm);border:1px solid var(--line)">
+      <div class="muted" style="font-size:0.75rem">MATERIALS COST</div>
+      <div style="font-size:1.2rem;font-weight:800;color:var(--ink)">₹{{ run.material_cost }}</div>
+    </div>
+    <div style="background:#f8fafc;padding:0.75rem;border-radius:var(--radius-sm);border:1px solid var(--line)">
+      <div class="muted" style="font-size:0.75rem">OVERHEAD CHARGES</div>
+      <div style="font-size:1.2rem;font-weight:800;color:var(--ink)">₹{{ run.overhead_cost }}</div>
+    </div>
+    <div style="background:#e0f2fe;padding:0.75rem;border-radius:var(--radius-sm);border:1px solid #bae6fd">
+      <div class="muted" style="font-size:0.75rem;color:#0369a1">TOTAL RUN COST</div>
+      <div style="font-size:1.2rem;font-weight:800;color:#0369a1">₹{{ run.total_cost }}</div>
+    </div>
+    <div style="background:#ecfdf5;padding:0.75rem;border-radius:var(--radius-sm);border:1px solid #a7f3d0">
+      <div class="muted" style="font-size:0.75rem;color:#047857">UNIT COST / PACKET</div>
+      <div style="font-size:1.25rem;font-weight:800;color:var(--ok)">
+        {% if run.cost_per_packet %}₹{{ run.cost_per_packet }}{% else %}Pending{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if run.status != 'COSTED' and run.status == 'COMPLETED' %}
+  <form method="post" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line)">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="overheads">
+    <div class="grid" style="grid-template-columns: 1fr 1fr 1fr">
+      <div class="field"><label>Labour Overhead (₹)</label>{{ overhead_form.labour }}</div>
+      <div class="field"><label>Gas / Power Overhead (₹)</label>{{ overhead_form.power }}</div>
+      <div class="field"><label>Other Direct Costs (₹)</label>{{ overhead_form.other }}</div>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn primary">Save Overheads</button>
+    </div>
+  </form>
+
+  <form method="post" style="margin-top:0.75rem">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="cost">
+    <button type="submit" class="btn success" style="box-shadow: 0 2px 4px rgba(5,150,105,0.3)">
+      ⚡ Finalise & Post Costing (Revaluation Row)
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+{% endblock %}

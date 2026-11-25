@@ -1,0 +1,48 @@
+{% extends "ota/base.html" %}
+{% block title %}Purchases & Raw Inward{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>🛒 Raw Material Purchases & Inward Bills</h1>
+    <p class="muted" style="margin:0">
+      Record inward material bills from suppliers. Updates warehouse stock and recalculates moving weighted average rates.
+    </p>
+  </div>
+  <div>
+    <a href="{% url 'purchase_create' %}" class="btn primary" style="box-shadow: 0 2px 4px rgba(37,99,235,0.25)">
+      ➕ New Purchase Bill
+    </a>
+  </div>
+</div>
+
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Bill No.</th>
+        <th>Date</th>
+        <th>Supplier</th>
+        <th>GSTIN</th>
+        <th class="num">Items</th>
+        <th>Recorded By</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in purchases %}
+      <tr>
+        <td><code><strong>{{ p.bill_no }}</strong></code></td>
+        <td>{{ p.bill_date }}</td>
+        <td><strong>{{ p.supplier.name }}</strong></td>
+        <td>{{ p.supplier.gstin|default:"-" }}</td>
+        <td class="num">{{ p.lines.count }} item line(s)</td>
+        <td class="muted">{{ p.created_by.username|default:"System" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted" style="text-align:center;padding:2rem">No purchase bills recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

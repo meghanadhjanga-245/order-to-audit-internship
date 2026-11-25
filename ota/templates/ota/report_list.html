@@ -1,0 +1,103 @@
+{% extends "ota/base.html" %}
+{% block title %}Monthly Auditor Reports{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>📊 Auditor & Management Monthly Reports</h1>
+    <p class="muted" style="margin:0">
+      Section 4.6 compliance reports: outward supplies GST summary (GSTR-1 / GSTR-3B), stock ledger, production variances, receivables ageing.
+    </p>
+  </div>
+  <div>
+    <a class="btn ghost" href="{% url 'payment_create' %}">💵 Record Payment Receipt</a>
+  </div>
+</div>
+
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Report Name</th>
+        <th>Auditor Purpose</th>
+        <th>Screen View</th>
+        <th>Export Formats</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Stock Summary</strong></td>
+        <td class="muted">Opening, receipts, issues, closing quantities and weighted-average valuation</td>
+        <td><a href="{% url 'report_view' 'stock' %}" class="btn ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem">View Report →</a></td>
+        <td>
+          <a href="{% url 'report_view' 'stock' %}?format=xlsx" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">Excel</a>
+          <a href="{% url 'report_view' 'stock' %}?format=csv" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">CSV</a>
+          <a href="{% url 'report_view' 'stock' %}?format=pdf" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">PDF</a>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Stock Ledger</strong></td>
+        <td class="muted">Every movement journal with timestamp, source document, and user traceability</td>
+        <td><a href="{% url 'report_view' 'ledger' %}" class="btn ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem">View Report →</a></td>
+        <td>
+          <a href="{% url 'report_view' 'ledger' %}?format=xlsx" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">Excel</a>
+          <a href="{% url 'report_view' 'ledger' %}?format=csv" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">CSV</a>
+          <a href="{% url 'report_view' 'ledger' %}?format=pdf" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">PDF</a>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Sales Register</strong></td>
+        <td class="muted">Customer-wise sales register with taxable values, CGST, SGST, IGST totals</td>
+        <td><a href="{% url 'report_view' 'sales' %}" class="btn ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem">View Report →</a></td>
+        <td>
+          <a href="{% url 'report_view' 'sales' %}?format=xlsx" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">Excel</a>
+          <a href="{% url 'report_view' 'sales' %}?format=csv" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">CSV</a>
+          <a href="{% url 'report_view' 'sales' %}?format=pdf" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">PDF</a>
+          <a href="{% url 'report_view' 'sales' %}?format=tally_xml" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem;background:#fef3c7;color:#92400e;border-color:#fde68a" title="Section 6 stretch goal">Tally XML</a>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>GST Summary (GSTR-1 / GSTR-3B)</strong></td>
+        <td class="muted">B2B and B2C outward supply breakdown by HSN and tax rate for tax filing</td>
+        <td><a href="{% url 'report_view' 'gst' %}" class="btn ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem">View Report →</a></td>
+        <td>
+          <a href="{% url 'report_view' 'gst' %}?format=xlsx" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">Excel</a>
+          <a href="{% url 'report_view' 'gst' %}?format=csv" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">CSV</a>
+          <a href="{% url 'report_view' 'gst' %}?format=pdf" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">PDF</a>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Purchase Register</strong></td>
+        <td class="muted">Inward raw material and packaging purchases by supplier</td>
+        <td><a href="{% url 'report_view' 'purchases' %}" class="btn ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem">View Report →</a></td>
+        <td>
+          <a href="{% url 'report_view' 'purchases' %}?format=xlsx" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">Excel</a>
+          <a href="{% url 'report_view' 'purchases' %}?format=csv" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">CSV</a>
+          <a href="{% url 'report_view' 'purchases' %}?format=pdf" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">PDF</a>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Production & Variance Report</strong></td>
+        <td class="muted">Planned vs actual raw material consumption, yield, scrap, and tolerance flags</td>
+        <td><a href="{% url 'report_view' 'production' %}" class="btn ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem">View Report →</a></td>
+        <td>
+          <a href="{% url 'report_view' 'production' %}?format=xlsx" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">Excel</a>
+          <a href="{% url 'report_view' 'production' %}?format=csv" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">CSV</a>
+          <a href="{% url 'report_view' 'production' %}?format=pdf" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">PDF</a>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Outstanding Receivables & Ageing</strong></td>
+        <td class="muted">Customer balances with 0-30, 31-60, 61-90, 90+ day ageing analysis</td>
+        <td><a href="{% url 'report_view' 'outstanding' %}" class="btn ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem">View Report →</a></td>
+        <td>
+          <a href="{% url 'report_view' 'outstanding' %}?format=xlsx" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">Excel</a>
+          <a href="{% url 'report_view' 'outstanding' %}?format=csv" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">CSV</a>
+          <a href="{% url 'report_view' 'outstanding' %}?format=pdf" class="btn ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem">PDF</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

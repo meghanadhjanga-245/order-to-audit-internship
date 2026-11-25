@@ -1,0 +1,46 @@
+{% extends "ota/base.html" %}
+{% block title %}Record Payment{% endblock %}
+{% block content %}
+
+<div style="max-width:540px;margin:1.5rem auto">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <h1>💵 Record Customer Payment</h1>
+    <a href="{% url 'report_view' 'outstanding' %}" class="btn ghost">Cancel</a>
+  </div>
+
+  <div class="card" style="box-shadow:var(--shadow-md);padding:1.5rem">
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label for="{{ form.customer.id_for_label }}">Customer</label>
+        {{ form.customer }}
+      </div>
+      <div class="field">
+        <label for="{{ form.amount.id_for_label }}">Amount Received (₹)</label>
+        {{ form.amount }}
+      </div>
+      <div class="field">
+        <label for="{{ form.business_date.id_for_label }}">Payment Date</label>
+        {{ form.business_date }}
+      </div>
+      <div class="grid" style="grid-template-columns: 1fr 1fr;margin-bottom:1rem">
+        <div class="field">
+          <label for="{{ form.mode.id_for_label }}">Payment Mode</label>
+          {{ form.mode }}
+        </div>
+        <div class="field">
+          <label for="{{ form.reference.id_for_label }}">Ref / UTR / Cheque No.</label>
+          {{ form.reference }}
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:1.25rem">
+        <button type="submit" class="btn success" style="width:100%;padding:0.6rem;font-size:0.95rem">
+          ✓ Allocate Payment & Reduce Receivables
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

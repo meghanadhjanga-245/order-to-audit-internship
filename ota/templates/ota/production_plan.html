@@ -1,0 +1,113 @@
+{% extends "ota/base.html" %}
+{% block title %}Production Planning & BOM Simulator{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>📐 Production Planning & Recipe Simulator</h1>
+    <p class="muted" style="margin:0">
+      Simulate batch requirements, check live raw material availability in warehouse, and launch production runs.
+    </p>
+  </div>
+  <div>
+    <a href="{% url 'production_list' %}" class="btn ghost">← Back to Production Runs</a>
+  </div>
+</div>
+
+<div class="card">
+  <form method="get" class="toolbar" style="margin-bottom:0">
+    <div style="flex:1;min-width:200px">
+      <label for="id_bom">Select Finished Product / BOM</label>
+      <select name="bom" id="id_bom" onchange="this.form.submit()" style="width:100%">
+        {% for b in boms %}
+          <option value="{{ b.pk }}" {% if b.pk == selected_bom.pk %}selected{% endif %}>
+            {{ b.product.name }} (Yield: {{ b.expected_yield }} packets/batch)
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="width:160px">
+      <label for="id_packets">Target Output (Packets)</label>
+      <input type="number" id="id_packets" name="packets" value="{{ target_packets }}" min="1" step="1" style="width:100%">
+    </div>
+    <div style="width:140px">
+      <label for="id_batches">Or Batches</label>
+      <input type="number" id="id_batches" name="batches" value="{{ batches }}" min="0.1" step="0.1" style="width:100%">
+    </div>
+    <button type="submit" class="btn primary">Calculate Plan</button>
+  </form>
+</div>
+
+<!-- READINESS SUMMARY -->
+<div class="card" style="border-left: 6px solid {% if can_produce %}var(--ok){% else %}var(--bad){% endif %}">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+    <div>
+      <h2 style="margin:0;font-size:1.25rem">
+        Planning for: <strong>{{ target_packets }} packets</strong> of {{ selected_bom.product.name }}
+        <span class="muted" style="font-size:0.9rem">({{ batches }} batch{% if batches > 1 %}es{% endif %})</span>
+      </h2>
+      <p style="margin:0.25rem 0 0;font-size:0.9rem">
+        {% if can_produce %}
+          <span class="ok" style="font-size:0.85rem">✓ Sufficient raw materials on hand</span> — Factory can proceed with this production run immediately!
+        {% else %}
+          <span class="flag" style="font-size:0.85rem">⚠️ Shortage detected</span> — 
+          {% for s in shortages %}{{ s }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+        {% endif %}
+      </p>
+    </div>
+    {% if can_produce %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_run">
+        <button type="submit" class="btn success" style="box-shadow: 0 2px 6px rgba(5,150,105,0.3)">
+          🚀 Create Production Run for {{ batches }} Batch(es)
+        </button>
+      </form>
+    {% else %}
+      <a href="{% url 'purchase_create' %}" class="btn primary">
+        🛒 Create Purchase Bill for Shortages
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- BOM REQUIREMENTS TABLE -->
+<h2>Required Materials vs Warehouse Inventory</h2>
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Category</th>
+        <th class="num">Standard (Per Batch)</th>
+        <th class="num">Required for Plan</th>
+        <th class="num">Warehouse On-Hand</th>
+        <th class="num">Balance After Run</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for req in requirements %}
+      <tr style="{% if not req.is_ok %}background:rgba(254,242,242,0.4);{% endif %}">
+        <td><strong>{{ req.item.name }}</strong> ({{ req.item.code }})</td>
+        <td><span class="pill {{ req.item.kind }}">{{ req.item.get_kind_display }}</span></td>
+        <td class="num">{{ req.per_batch }} {{ req.item.base_unit }}</td>
+        <td class="num"><strong>{{ req.needed }} {{ req.item.base_unit }}</strong></td>
+        <td class="num">{{ req.on_hand }} {{ req.item.base_unit }}</td>
+        <td class="num" style="font-weight:700;color:{% if req.is_ok %}var(--ok){% else %}var(--bad){% endif %};">
+          {{ req.balance_after }} {{ req.item.base_unit }}
+        </td>
+        <td>
+          {% if req.is_ok %}
+            <span class="ok">✓ Sufficient</span>
+          {% else %}
+            <span class="flag">⚠️ Shortage</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

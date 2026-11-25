@@ -1,0 +1,58 @@
+{% extends "ota/base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<div style="max-width:480px;margin:2.5rem auto">
+  <div class="card" style="box-shadow:var(--shadow-lg);padding:1.75rem">
+    <div style="text-align:center;margin-bottom:1.5rem">
+      <div style="width:48px;height:48px;background:linear-gradient(135deg, #f59e0b, #d97706);border-radius:12px;margin:0 auto 0.75rem;display:flex;align-items:center;justify-content:center;font-size:1.75rem;box-shadow:0 4px 6px rgba(217,119,6,0.25)">
+        🍿
+      </div>
+      <h1 style="justify-content:center;font-size:1.45rem;margin:0 0 0.25rem">Sri Lakshmi Snacks</h1>
+      <p class="muted" style="margin:0;font-size:0.85rem">Order-to-Audit System · Prototype Sign In</p>
+    </div>
+
+    {% if form.errors %}
+      <div class="msg error">Wrong username or password. Please try again.</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_username">Username</label>
+        <input type="text" name="username" id="id_username" autofocus required style="width:100%" placeholder="e.g. admin">
+      </div>
+      <div class="field">
+        <label for="id_password">Password</label>
+        <input type="password" name="password" id="id_password" required style="width:100%" value="benchmark123">
+      </div>
+      <button type="submit" style="width:100%;padding:0.6rem;font-size:0.95rem;margin-top:0.5rem">Sign in</button>
+    </form>
+
+    <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--line)">
+      <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.75rem">
+        ⚡ 1-Click Demo Logins (Password: <code>benchmark123</code>):
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.45rem">
+        <a href="{% url 'switch_user' 'admin' %}" class="btn ghost" style="font-size:0.76rem;justify-content:flex-start">
+          👑 <strong>Admin</strong> (Desk)
+        </a>
+        <a href="{% url 'switch_user' 'production' %}" class="btn ghost" style="font-size:0.76rem;justify-content:flex-start">
+          🏭 <strong>Production</strong> (Floor)
+        </a>
+        <a href="{% url 'switch_user' 'salesman_a' %}" class="btn ghost" style="font-size:0.76rem;justify-content:flex-start">
+          📱 <strong>Salesman A</strong> (TN)
+        </a>
+        <a href="{% url 'switch_user' 'salesman_b' %}" class="btn ghost" style="font-size:0.76rem;justify-content:flex-start">
+          🚚 <strong>Salesman B</strong> (KA)
+        </a>
+        <a href="{% url 'switch_user' 'accountant' %}" class="btn ghost" style="font-size:0.76rem;justify-content:flex-start">
+          📊 <strong>Accountant</strong> (Auditor)
+        </a>
+        <a href="{% url 'switch_user' 'owner' %}" class="btn ghost" style="font-size:0.76rem;justify-content:flex-start">
+          💼 <strong>Owner</strong> (Executive)
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

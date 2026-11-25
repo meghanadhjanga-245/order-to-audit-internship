@@ -1,0 +1,241 @@
+{% extends "ota/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+  <div>
+    <h1>
+      <span>Dashboard</span>
+      <span class="muted" style="font-size:0.9rem;font-weight:500">{{ today|date:"l, d F Y" }}</span>
+    </h1>
+    <p class="muted" style="margin:0">
+      Enterprise overview of the factory: field orders, production floor, inventory ledger, and collections.
+    </p>
+  </div>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    {% if 'salesman' in user_roles or 'admin' in user_roles %}
+      <a href="{% url 'order_create' %}" class="btn primary">➕ New Field Order</a>
+    {% endif %}
+    {% if 'production' in user_roles or 'admin' in user_roles %}
+      <a href="{% url 'production_create' %}" class="btn ghost">🏭 Start Production Run</a>
+      <a href="{% url 'production_plan' %}" class="btn ghost">📐 BOM Plan</a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- TOP KPI CARDS -->
+<div class="grid">
+  <div class="kpi blue">
+    <div class="l">Orders Today</div>
+    <div class="n">{{ orders_today }}</div>
+    <div class="muted" style="font-size:0.75rem;margin-top:0.25rem">Field sales booked</div>
+  </div>
+  
+  <div class="kpi amber">
+    <div class="l">Open Orders (Action Req)</div>
+    <div class="n">{{ open_order_count }}</div>
+    <div class="muted" style="font-size:0.75rem;margin-top:0.25rem">Pending approval/dispatch</div>
+  </div>
+
+  <div class="kpi emerald">
+    <div class="l">Warehouse Stock Value</div>
+    <div class="n">₹{{ total_val }}</div>
+    <div class="muted" style="font-size:0.75rem;margin-top:0.25rem">Append-only ledger valuation</div>
+  </div>
+
+  <div class="kpi purple">
+    <div class="l">Cost / Packet (Last Run)</div>
+    <div class="n">
+      {% if latest_run.cost_per_packet %}₹{{ latest_run.cost_per_packet }}{% else %}-{% endif %}
+    </div>
+    <div class="muted" style="font-size:0.75rem;margin-top:0.25rem">Good packets allocation</div>
+  </div>
+
+  <div class="kpi rose">
+    <div class="l">Outstanding Receivables</div>
+    <div class="n">
+      {% for k,v in outstanding.totals.items %}{% if 'Outstanding' in k %}₹{{ v }}{% endif %}{% endfor %}
+    </div>
+    <div class="muted" style="font-size:0.75rem;margin-top:0.25rem">Customer credit dues</div>
+  </div>
+</div>
+
+<!-- INVENTORY VALUE DISTRIBUTION & PIPELINE STATS -->
+<div class="grid" style="grid-template-columns: 2fr 1fr;margin-bottom:1.25rem">
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header">
+      <h2>Inventory Breakdown by Category</h2>
+      <a href="{% url 'stock' %}" style="font-size:0.8rem">View Stock Ledger →</a>
+    </div>
+    
+    <!-- Distribution Progress Bar -->
+    <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;background:#e2e8f0;margin-bottom:1rem">
+      <div style="background:#3b82f6;width:45%" title="Raw Materials: ₹{{ raw_val }}"></div>
+      <div style="background:#f59e0b;width:15%" title="Packaging: ₹{{ pack_val }}"></div>
+      <div style="background:#10b981;width:40%" title="Finished Goods: ₹{{ fg_val }}"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns: repeat(3, 1fr);gap:0.75rem;text-align:center">
+      <div style="padding:0.6rem;background:#eff6ff;border-radius:var(--radius-sm)">
+        <div style="font-size:0.75rem;font-weight:700;color:#1d4ed8">RAW MATERIALS</div>
+        <div style="font-size:1.15rem;font-weight:800;color:#1e3a8a">₹{{ raw_val }}</div>
+        <div class="muted" style="font-size:0.7rem">Flour, Oil, Spices</div>
+      </div>
+      <div style="padding:0.6rem;background:#fffbeb;border-radius:var(--radius-sm)">
+        <div style="font-size:0.75rem;font-weight:700;color:#b45309">PACKAGING</div>
+        <div style="font-size:1.15rem;font-weight:800;color:#78350f">₹{{ pack_val }}</div>
+        <div class="muted" style="font-size:0.7rem">Pouches, Cartons</div>
+      </div>
+      <div style="padding:0.6rem;background:#ecfdf5;border-radius:var(--radius-sm)">
+        <div style="font-size:0.75rem;font-weight:700;color:#047857">FINISHED GOODS</div>
+        <div style="font-size:1.15rem;font-weight:800;color:#064e3b">₹{{ fg_val }}</div>
+        <div class="muted" style="font-size:0.7rem">Murukku 200g packets</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header">
+      <h2>Sales Order Pipeline</h2>
+      <a href="{% url 'order_list' %}" style="font-size:0.8rem">All Orders →</a>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.5rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0.6rem;border-radius:var(--radius-sm);background:#f8fafc">
+        <span><span class="pill SUBMITTED">Submitted</span></span>
+        <strong>{{ order_pipeline.submitted }}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0.6rem;border-radius:var(--radius-sm);background:#f8fafc">
+        <span><span class="pill APPROVED">Approved</span></span>
+        <strong>{{ order_pipeline.approved }}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0.6rem;border-radius:var(--radius-sm);background:#f8fafc">
+        <span><span class="pill INVOICED">Invoiced</span></span>
+        <strong>{{ order_pipeline.invoiced }}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0.6rem;border-radius:var(--radius-sm);background:#f8fafc">
+        <span><span class="pill DISPATCHED">Dispatched</span></span>
+        <strong>{{ order_pipeline.dispatched }}</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOW STOCK REORDER ALERTS (SECTION 6 STRETCH GOAL) -->
+{% if low_stock %}
+<div class="card" style="border-left: 6px solid #f59e0b;background:#fffbeb">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem">
+    <div>
+      <h3 style="margin:0;color:#92400e;display:flex;align-items:center;gap:0.4rem">
+        ⚠️ Reorder Level Alert: Materials Running Low
+      </h3>
+      <p style="margin:0.25rem 0 0;font-size:0.85rem;color:#78350f">
+        The following raw materials or packaging items are near or below defined reorder points:
+      </p>
+    </div>
+    <a href="{% url 'purchase_create' %}" class="btn primary" style="font-size:0.8rem">
+      🛒 Raise Purchase Bill
+    </a>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.75rem">
+    {% for ls in low_stock %}
+      <span class="pill" style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;font-size:0.78rem">
+        <strong>{{ ls.item.name }}</strong>: On Hand {{ ls.qty }} {{ ls.unit }} (Reorder Level: {{ ls.threshold }} {{ ls.unit }})
+      </span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- VARIANCE ALERTS -->
+{% if alerts %}
+<div class="card" style="border-left: 6px solid var(--bad);background:#fff1f2">
+  <h3 style="margin:0 0 0.5rem;color:var(--bad);display:flex;align-items:center;gap:0.4rem">
+    ⚡ Production Variance Alerts Beyond Tolerance
+  </h3>
+  <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+    {% for alert in alerts %}
+      <a href="{% url 'production_detail' alert.run.pk %}" class="pill" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;text-decoration:none">
+        <strong>{{ alert.run.run_no }}</strong> &mdash; {{ alert.label }}
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- OPEN ORDERS -->
+<h2>Open Field Orders</h2>
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Order No.</th>
+        <th>Customer</th>
+        <th>Salesman</th>
+        <th class="num">Quantity</th>
+        <th>Status</th>
+        <th>Audit</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in open_orders %}
+      <tr>
+        <td><code><strong>{{ order.order_no }}</strong></code></td>
+        <td>{{ order.customer.name }} ({{ order.customer.state_code }})</td>
+        <td>{{ order.salesman.username }}</td>
+        <td class="num">{{ order.total_qty }} pkts</td>
+        <td><span class="pill {{ order.status }}">{{ order.get_status_display }}</span></td>
+        <td>
+          {% if order.captured_offline %}
+            <span class="pill" style="background:#fed7aa;color:#9a3412">Offline Sync</span>
+          {% else %}
+            <span class="muted">Live</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'order_detail' order.pk %}" class="btn ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem">
+            Open →
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted" style="text-align:center;padding:1.5rem">No open orders pending.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- STOCK AT A GLANCE -->
+<h2>Warehouse Stock Summary</h2>
+<div class="card scroll" style="padding:0">
+  <table>
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Item</th>
+        <th>Category</th>
+        <th class="num">Opening</th>
+        <th class="num">Receipts</th>
+        <th class="num">Issues</th>
+        <th class="num">Closing Stock</th>
+        <th class="num">Value (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in stock.rows %}
+      <tr>
+        <td><code>{{ row.0 }}</code></td>
+        <td><strong>{{ row.1 }}</strong></td>
+        <td><span class="pill {{ row.2 }}">{{ row.2 }}</span></td>
+        <td class="num">{{ row.3 }}</td>
+        <td class="num" style="color:var(--ok)">+{{ row.4 }}</td>
+        <td class="num" style="color:var(--bad)">-{{ row.5 }}</td>
+        <td class="num" style="font-weight:700">{{ row.6 }}</td>
+        <td class="num" style="font-weight:700">₹{{ row.7 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
